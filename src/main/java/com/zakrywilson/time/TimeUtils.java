@@ -1,9 +1,5 @@
 package com.zakrywilson.time;
 
-import org.apache.commons.lang3.time.DateUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
@@ -24,11 +20,6 @@ import java.util.GregorianCalendar;
 public final class TimeUtils {
 
     /**
-     * SLF4J Logger.
-     */
-    private static final Logger LOG = LoggerFactory.getLogger(TimeUtils.class);
-
-    /**
      * The value <tt>0</tt> to indicate the primary date format in the array of date formats.
      */
     private static final int PRIMARY_FORMAT = 0;
@@ -46,8 +37,7 @@ public final class TimeUtils {
      * @param dateFormat the date format to be set
      * @throws IllegalArgumentException if the date format is <tt>null</tt>
      */
-    public TimeUtils(final String dateFormat)
-              throws IllegalArgumentException {
+    public TimeUtils(final String dateFormat) throws IllegalArgumentException {
         if (dateFormat == null) {
             throw new IllegalArgumentException("Date format cannot be null");
         }
@@ -63,8 +53,7 @@ public final class TimeUtils {
      * @param dateFormats the date formats to be set
      * @throws IllegalArgumentException if the date format is <tt>null</tt>
      */
-    public TimeUtils(final String... dateFormats)
-              throws IllegalArgumentException {
+    public TimeUtils(final String... dateFormats) throws IllegalArgumentException {
         if (dateFormats == null) {
             throw new IllegalArgumentException("Date format array cannot be null");
         }
@@ -100,9 +89,9 @@ public final class TimeUtils {
      * @param date the <tt>String</tt> to be parsed to a <tt>Date</tt>
      * @return the <tt>Date</tt>
      * @throws ConversionException if the conversion produces an error
+     * @throws ParseException if none of the parse formats match the <tt>String</tt> date
      */
-    public Date parseDate(final String date)
-                   throws ConversionException {
+    public Date parseDate(final String date) throws ConversionException, ParseException {
         return TimeUtils.parseDate(date, dateFormats);
     }
 
@@ -112,9 +101,10 @@ public final class TimeUtils {
      * @param date the <tt>String</tt> to be parsed to a <tt>XMLGregorianCalendar</tt>
      * @return the <tt>XMLGregorianCalendar</tt>
      * @throws ConversionException if the conversion produces an error
+     * @throws ParseException if none of the parse formats match the <tt>String</tt> date
      */
     public XMLGregorianCalendar parseDateToXMLGregorianCalendar(final String date)
-                                                         throws ConversionException {
+            throws ConversionException, ParseException {
         return TimeUtils.parseDateToXMLGregorianCalendar(date, dateFormats);
     }
 
@@ -126,7 +116,7 @@ public final class TimeUtils {
      * @throws ConversionException if the conversion produces an error
      */
     public static XMLGregorianCalendar dateToXMLGregorianCalendar(final Date date)
-                                                           throws ConversionException {
+            throws ConversionException {
         final GregorianCalendar gregorianCalendar = new GregorianCalendar();
         gregorianCalendar.setTime(date);
         try {
@@ -153,8 +143,7 @@ public final class TimeUtils {
      * @param formatPattern the date format to which the <tt>Date</tt> object is to be formatted
      * @return the formatted <tt>Date</tt>
      */
-    public static String formatDate(final Date date,
-                                    final String formatPattern) {
+    public static String formatDate(final Date date, final String formatPattern) {
         return new SimpleDateFormat(formatPattern).format(date);
     }
 
@@ -166,7 +155,7 @@ public final class TimeUtils {
      * @return the formatted <tt>XMLGregorianCalendar</tt>
      */
     public static String formatDate(final XMLGregorianCalendar calendar,
-                                    final String formatPattern) {
+            final String formatPattern) {
         return new SimpleDateFormat(formatPattern).format(calendar);
     }
 
@@ -176,16 +165,24 @@ public final class TimeUtils {
      * @param date the <tt>String</tt> to be parsed to a <tt>Date</tt>
      * @param parseFormats the multiple date formats
      * @return the <tt>Date</tt>
+     * @throws ParseException if none of the parse formats match the <tt>String</tt> date
      * @throws ConversionException if the conversion produces an error
      */
-    public static Date parseDate(final String date,
-                                 final String... parseFormats)
-                          throws ConversionException {
-        try {
-            return DateUtils.parseDate(date, parseFormats);
-        } catch (final ParseException e) {
-            throw new ConversionException("Unable to parse String \"" + date + "\" to Date", e);
+    public static Date parseDate(final String date, final String... parseFormats)
+            throws ParseException, ConversionException {
+        final SimpleDateFormat parser = new SimpleDateFormat();
+        for (String parseFormat : parseFormats) {
+            String pattern = parseFormat;
+            if (pattern.endsWith("ZZ")) {
+                pattern = pattern.substring(0, pattern.length() - 1);
+            }
+            parser.applyPattern(pattern);
+            final Date d = parser.parse(date);
+            if (d != null) {
+                return d;
+            }
         }
+        throw new ParseException("Unable to parse date '" + date + "'", 0);
     }
 
     /**
@@ -196,14 +193,8 @@ public final class TimeUtils {
      * @return the <tt>XMLGregorianCalendar</tt>
      */
     public static XMLGregorianCalendar parseDateToXMLGregorianCalendar(final String date,
-                                                                       final String... parseFormats)
-                                                                throws ConversionException {
-        try {
-            return dateToXMLGregorianCalendar(DateUtils.parseDate(date, parseFormats));
-        } catch (ParseException e) {
-            throw new ConversionException("Unable to parse String \""
-                    + date + "\" to XMLGregorianCalendar", e);
-        }
+            final String... parseFormats) throws ParseException, ConversionException {
+        return dateToXMLGregorianCalendar(parseDate(date, parseFormats));
     }
 
 }
